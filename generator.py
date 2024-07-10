@@ -2,12 +2,13 @@
 
 import argparse
 import numpy as np
+import wave
 
 parser = argparse.ArgumentParser()
 parser.add_argument("ofile", type=str, help="Output filepath")
 
 
-class Wave:
+class WaveData:
     rate: int = 44100
     sec: float = 1.0
     amp: float = 0.5
@@ -18,6 +19,7 @@ class Wave:
     notes: dict[list[str], list[float]] = {}
     t_dur: float = 0.0
     output = np.array([])
+    output16bit = np.array([])
 
     def __init__(self, mml: str, bpm: int = 120) -> None:
         self.set_freqs()
@@ -57,9 +59,22 @@ class Wave:
                 self.output, np.sin(2.0 * np.pi * self.notes[char] * self.t_dur)
             )
 
+    def convert_16bit(self):
+        self.output16bit = self.output * np.iinfo(np.int16).max
+        self.output16bit = self.output16bit.astype(np.int16)
+
 
 def genarate(filename: str):
     print(filename)
+    mml = "DCDC"
+    wdata = WaveData(mml, 120)
+    wdata.mml_to_sin()
+    wdata.convert_16bit()
+    with wave.open(filename, mode="w") as ofile:
+        ofile.setnchannels(1)
+        ofile.setsampwidth(2)
+        ofile.setframerate(wdata.rate)
+        ofile.writeframes(wdata.output16bit)
 
 
 if __name__ == "__main__":
