@@ -2,6 +2,7 @@
 
 import argparse
 import numpy as np
+from scipy import signal as sig
 import wave
 
 parser = argparse.ArgumentParser()
@@ -15,16 +16,29 @@ class WaveData:
     BPM: int = 0
     mml: str = ""
     note_dur: float = 0.0
+    shape: str = ""
+    duty: float = 0.0
+    width: float = 0.0
     base_freq: float = 440.0
     notes: dict[list[str], list[float]] = {}
     t_dur: float = 0.0
     output = np.array([])
     output16bit = np.array([])
 
-    def __init__(self, mml: str, bpm: int = 120) -> None:
+    def __init__(
+        self,
+        mml: str,
+        bpm: int = 120,
+        duty: float = 0.5,
+        width: float = 0.5,
+        shape: str = "sin",
+    ) -> None:
         self.set_freqs()
         self.BPM = bpm
         self.note_dur = 60.0 / float(bpm)
+        self.duty = duty
+        self.width = width
+        self.shape = shape
         self.set_note_time()
         self.mml = mml
 
@@ -53,10 +67,24 @@ class WaveData:
     def set_note_time(self):
         self.t_dur = np.linspace(0.0, self.note_dur, int(self.rate * self.note_dur))
 
+    def get_note_list(self):
+        if self.shape == "sin":
+            self.mml_to_sin()
+        elif self.shape == "sq":
+            self.mml_to_square()
+        self.convert_16bit()
+
     def mml_to_sin(self):
         for char in list(self.mml):
             self.output = np.append(
                 self.output, np.sin(2.0 * np.pi * self.notes[char] * self.t_dur)
+            )
+
+    def mml_to_square(self):
+        for char in list(self.mml):
+            self.output = np.append(
+                self.output,
+                sig.square(2.0 * np.pi * self.notes[char] * self.t_dur, self.duty),
             )
 
     def convert_16bit(self):
@@ -67,9 +95,8 @@ class WaveData:
 def genarate(filename: str):
     print(filename)
     mml = "DCDC"
-    wdata = WaveData(mml, 120)
-    wdata.mml_to_sin()
-    wdata.convert_16bit()
+    wdata = WaveData(mml, bpm=120, duty=0.5, shape="sq")
+    wdata.get_note_list()
     with wave.open(filename, mode="w") as ofile:
         ofile.setnchannels(1)
         ofile.setsampwidth(2)
