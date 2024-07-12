@@ -7,6 +7,10 @@ import wave
 
 parser = argparse.ArgumentParser()
 parser.add_argument("ofile", type=str, help="Output filepath")
+parser.add_argument("-t", "--wtype", type=str, help="wave type: sin, sq, saw")
+parser.add_argument("-s", "--bpm", type=float, help="BPM")
+parser.add_argument("-d", "--duty", type=float, help="duty rate for square wave")
+parser.add_argument("-w", "--width", type=float, help="width for sawtooth wave")
 
 
 class WaveData:
@@ -92,10 +96,23 @@ class WaveData:
         self.output16bit = self.output16bit.astype(np.int16)
 
 
-def genarate(filename: str):
+def genarate(filename: str, d_param: dict[str, any]):
     print(filename)
-    mml = "DCDC"
-    wdata = WaveData(mml, bpm=120, duty=0.5, shape="sq")
+    mml = "GFGF"
+    if "type" not in d_param:
+        d_param["type"] = "sin"
+    if "bpm" not in d_param:
+        d_param["bpm"] = 120
+    if "duty" in d_param:
+        wdata = WaveData(
+            mml, bpm=d_param["bpm"], duty=d_param["duty"], shape=d_param["type"]
+        )
+    elif "width" in d_param:
+        wdata = WaveData(
+            mml, bpm=d_param["bpm"], width=d_param["width"], shape=d_param["type"]
+        )
+    else:
+        wdata = WaveData(mml, bpm=d_param["bpm"], shape=d_param["type"])
     wdata.get_note_list()
     with wave.open(filename, mode="w") as ofile:
         ofile.setnchannels(1)
@@ -106,4 +123,13 @@ def genarate(filename: str):
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    genarate(args.ofile)
+    d_param: dict[str, any] = {}
+    if args.wtype:
+        d_param["type"] = args.wtype
+    if args.bpm:
+        d_param["bpm"] = args.bpm
+    if args.duty:
+        d_param["duty"] = args.duty
+    if args.width:
+        d_param["width"] = args.width
+    genarate(args.ofile, d_param)
